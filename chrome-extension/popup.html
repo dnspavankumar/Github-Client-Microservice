@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>GitHub Repo Assistant</title>
+        <link rel="stylesheet" href="popup.css" />
+    </head>
+    <body>
+        <div class="container">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-content">
+                    <h1>🤖 GitHub Repo Assistant</h1>
+                </div>
+                <button id="settingsBtn" class="icon-btn" title="Settings">
+                    ⚙️
+                </button>
+            </header>
+
+            <!-- Repository Info -->
+            <div id="repoInfo" class="repo-info hidden">
+                <div class="repo-header">
+                    <svg
+                        class="repo-icon"
+                        viewBox="0 0 16 16"
+                        width="16"
+                        height="16"
+                    >
+                        <path
+                            fill="currentColor"
+                            d="M2 2.5A2.5 2.5 0 014.5 0h8.75a.75.75 0 01.75.75v12.5a.75.75 0 01-.75.75h-2.5a.75.75 0 110-1.5h1.75v-2h-8a1 1 0 00-.714 1.7.75.75 0 01-1.072 1.05A2.495 2.495 0 012 11.5v-9zm10.5-1V9h-8c-.356 0-.694.074-1 .208V2.5a1 1 0 011-1h8zM5 12.25v3.25a.25.25 0 00.4.2l1.45-1.087a.25.25 0 01.3 0L8.6 15.7a.25.25 0 00.4-.2v-3.25a.25.25 0 00-.25-.25h-3.5a.25.25 0 00-.25.25z"
+                        ></path>
+                    </svg>
+                    <span id="repoName" class="repo-name"
+                        >Not on a GitHub repo</span
+                    >
+                </div>
+                <div id="repoBranch" class="repo-branch hidden">
+                    <svg viewBox="0 0 16 16" width="12" height="12">
+                        <path
+                            fill="currentColor"
+                            d="M11.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122V6A2.5 2.5 0 0110 8.5H6a1 1 0 00-1 1v1.128a2.251 2.251 0 11-1.5 0V5.372a2.25 2.25 0 111.5 0v1.836A2.492 2.492 0 016 7h4a1 1 0 001-1v-.628A2.25 2.25 0 019.5 3.25zM4.25 12a.75.75 0 100 1.5.75.75 0 000-1.5zM3.5 3.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0z"
+                        ></path>
+                    </svg>
+                    <span id="branchName">main</span>
+                </div>
+            </div>
+
+            <!-- Not on GitHub warning -->
+            <div id="notOnGithub" class="warning-message">
+                <p>
+                    📌 Please navigate to a GitHub repository to use this
+                    extension.
+                </p>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div id="tabNav" class="tab-nav hidden">
+                <button class="tab-btn active" data-tab="summary">
+                    Summary
+                </button>
+                <button class="tab-btn" data-tab="query">Q&A</button>
+            </div>
+
+            <!-- Summary Tab -->
+            <div id="summaryTab" class="tab-content">
+                <div class="section">
+                    <button id="analyzBtn" class="btn btn-primary">
+                        <span class="btn-text">Analyze Repository</span>
+                        <span class="btn-loader hidden">
+                            <span class="spinner"></span>
+                        </span>
+                    </button>
+                </div>
+
+                <div id="summaryResult" class="result hidden">
+                    <div class="result-header">
+                        <h3>Summary</h3>
+                        <button
+                            id="copySummary"
+                            class="icon-btn"
+                            title="Copy to clipboard"
+                        >
+                            📋
+                        </button>
+                    </div>
+                    <div id="summaryContent" class="result-content"></div>
+                    <div id="summaryStats" class="stats hidden"></div>
+                </div>
+
+                <div id="ingestionStatus" class="status-box hidden">
+                    <div class="status-header">
+                        <span class="status-icon">⏳</span>
+                        <span class="status-text"
+                            >Processing repository...</span
+                        >
+                    </div>
+                    <div class="progress-bar">
+                        <div
+                            id="progressFill"
+                            class="progress-fill"
+                            style="width: 0%"
+                        ></div>
+                    </div>
+                    <p id="statusMessage" class="status-message">
+                        Initializing...
+                    </p>
+                </div>
+            </div>
+
+            <!-- Query Tab -->
+            <div id="queryTab" class="tab-content hidden">
+                <div class="section">
+                    <div class="input-group">
+                        <textarea
+                            id="queryInput"
+                            class="query-input"
+                            placeholder="Ask anything about this repository..."
+                            rows="3"
+                        ></textarea>
+                    </div>
+
+                    <div class="scope-options">
+                        <label class="scope-label">Search Scope:</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input
+                                    type="radio"
+                                    name="scope"
+                                    value="full"
+                                    checked
+                                />
+                                <span>Full Repository</span>
+                            </label>
+                            <label class="radio-option">
+                                <input
+                                    type="radio"
+                                    name="scope"
+                                    value="folder"
+                                />
+                                <span>Specific Folder</span>
+                            </label>
+                        </div>
+                        <input
+                            id="folderPath"
+                            type="text"
+                            class="folder-input hidden"
+                            placeholder="e.g., src/components"
+                        />
+                    </div>
+
+                    <button id="askBtn" class="btn btn-primary" disabled>
+                        <span class="btn-text">Ask Question</span>
+                        <span class="btn-loader hidden">
+                            <span class="spinner"></span>
+                        </span>
+                    </button>
+                </div>
+
+                <div id="queryResult" class="result hidden">
+                    <div class="result-header">
+                        <h3>Answer</h3>
+                        <button
+                            id="copyAnswer"
+                            class="icon-btn"
+                            title="Copy to clipboard"
+                        >
+                            📋
+                        </button>
+                    </div>
+                    <div id="answerContent" class="result-content"></div>
+
+                    <div id="sources" class="sources hidden">
+                        <h4>Sources</h4>
+                        <div id="sourcesList"></div>
+                    </div>
+
+                    <div id="queryStats" class="stats hidden"></div>
+                </div>
+
+                <div id="queryHistory" class="history hidden">
+                    <h4>Recent Questions</h4>
+                    <div id="historyList"></div>
+                </div>
+            </div>
+
+            <!-- Error Message -->
+            <div id="errorMessage" class="error-message hidden">
+                <span class="error-icon">⚠️</span>
+                <span id="errorText"></span>
+            </div>
+
+            <!-- Footer -->
+            <footer class="footer">
+                <div id="statusIndicator" class="status-indicator">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span id="statusLabel">Not connected</span>
+                </div>
+            </footer>
+        </div>
+
+        <script src="popup.js"></script>
+    </body>
+</html>

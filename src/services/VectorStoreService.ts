@@ -1,218 +1,222 @@
-import { Pinecone } from '@pinecone-database/pinecone';
-import { config } from '../config';
-import logger from '../utils/logger';
-import { EmbeddingRecord, SearchResult } from '../models/types';
+import { Pinecone } from "@pinecone-database/pinecone";
+import { config } from "../config";
+import logger from "../utils/logger";
+import { EmbeddingRecord, SearchResult } from "../models/types";
 
 class VectorStoreService {
-    private client: Pinecone;
-    private indexName: string;
-    private initialized: boolean = false;
+  private client: Pinecone;
+  private indexName: string;
+  private initialized: boolean = false;
 
-    constructor() {
-        this.client = new Pinecone({
-            apiKey: config.pinecone.apiKey,
+  constructor() {
+    this.client = new Pinecone({
+      apiKey: config.pinecone.apiKey,
+    });
+    this.indexName = config.pinecone.indexName;
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      // Check if index exists
+      const indexes = await this.client.listIndexes();
+      const indexExists = indexes.indexes?.some(
+        (idx) => idx.name === this.indexName,
+      );
+
+      if (!indexExists) {
+        logger.info({ indexName: this.indexName }, "Creating Pinecone index");
+        await this.client.createIndex({
+          name: this.indexName,
+          dimension: 1024, // Local embedding dimension
+          metric: "cosine",
+          spec: {
+            serverless: {
+              cloud: "aws",
+              region: "us-east-1",
+            },
+          },
         });
-        this.indexName = config.pinecone.indexName;
+
+        // Wait for index to be ready
+        await this.waitForIndexReady();
+      }
+
+      this.initialized = true;
+      logger.info({ indexName: this.indexName }, "Pinecone initialized");
+    } catch (error) {
+      logger.error({ error }, "Failed to initialize Pinecone");
+      throw error;
+    }
+  }
+
+  private async waitForIndexReady(): Promise<void> {
+    const maxAttempts = 30;
+    const delayMs = 2000;
+
+    for (let i = 0; i < maxAttempts; i++) {
+      try {
+        const index = this.client.index(this.indexName);
+        const stats = await index.describeIndexStats();
+        if (stats) {
+          logger.info("Pinecone index is ready");
+          return;
+        }
+      } catch (error) {
+        // Index not ready yet
+      }
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
 
-    async initialize(): Promise<void> {
-        if (this.initialized) return;
+    throw new Error("Pinecone index creation timeout");
+  }
 
-        try {
-            // Check if index exists
-            const indexes = await this.client.listIndexes();
-            const indexExists = indexes.indexes?.some(idx => idx.name === this.indexName);
-
-            if (!indexExists) {
-                logger.info({ indexName: this.indexName }, 'Creating Pinecone index');
-                await this.client.createIndex({
-                    name: this.indexName,
-                    dimension: 1536, // OpenAI text-embedding-3-small dimension
-                    metric: 'cosine',
-                    spec: {
-                        serverless: {
-                            cloud: 'aws',
-                            region: 'us-east-1',
-                        },
-                    },
-                });
-
-                // Wait for index to be ready
-                await this.waitForIndexReady();
-            }
-
-            this.initialized = true;
-            logger.info({ indexName: this.indexName }, 'Pinecone initialized');
-        } catch (error) {
-            logger.error({ error }, 'Failed to initialize Pinecone');
-            throw error;
-        }
+  async upsert(records: EmbeddingRecord[]): Promise<void> {
+    if (!this.initialized) {
+      await this.initialize();
     }
 
-    private async waitForIndexReady(): Promise<void> {
-        const maxAttempts = 30;
-        const delayMs = 2000;
+    try {
+      const index = this.client.index(this.indexName);
 
-        for (let i = 0; i < maxAttempts; i++) {
-            try {
-                const index = this.client.index(this.indexName);
-                const stats = await index.describeIndexStats();
-                if (stats) {
-                    logger.info('Pinecone index is ready');
-                    return;
-                }
-            } catch (error) {
-                // Index not ready yet
-            }
-            await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
+      // Convert to Pinecone format
+      const vectors = records.map((record) => ({
+        id: record.id,
+        values: record.embedding,
+        metadata: {
+          repoId: record.repoId,
+          filePath: record.filePath,
+          content: record.metadata.content,
+          language: record.metadata.language || "",
+          fileType: record.metadata.fileType,
+          extension: record.metadata.extension,
+          relativePath: record.metadata.relativePath,
+          startLine: record.metadata.startLine,
+          endLine: record.metadata.endLine,
+          chunkIndex: record.metadata.chunkIndex,
+          isCode: record.metadata.isCode,
+          context: record.metadata.context || "",
+        },
+      }));
 
-        throw new Error('Pinecone index creation timeout');
+      // Batch upsert in chunks of 100
+      const batchSize = 100;
+      for (let i = 0; i < vectors.length; i += batchSize) {
+        const batch = vectors.slice(i, i + batchSize);
+        await index.upsert(batch);
+      }
+
+      logger.info({ count: records.length }, "Upserted vectors to Pinecone");
+    } catch (error) {
+      logger.error({ error }, "Failed to upsert vectors");
+      throw error;
+    }
+  }
+
+  async search(
+    embedding: number[],
+    repoId: string,
+    topK: number = 5,
+    filter?: Record<string, any>,
+  ): Promise<SearchResult[]> {
+    if (!this.initialized) {
+      await this.initialize();
     }
 
-    async upsert(records: EmbeddingRecord[]): Promise<void> {
-        if (!this.initialized) {
-            await this.initialize();
-        }
+    try {
+      const index = this.client.index(this.indexName);
 
-        try {
-            const index = this.client.index(this.indexName);
+      const queryFilter: Record<string, any> = {
+        repoId: { $eq: repoId },
+        ...filter,
+      };
 
-            // Convert to Pinecone format
-            const vectors = records.map(record => ({
-                id: record.id,
-                values: record.embedding,
-                metadata: {
-                    repoId: record.repoId,
-                    filePath: record.filePath,
-                    content: record.metadata.content,
-                    language: record.metadata.language || '',
-                    fileType: record.metadata.fileType,
-                    extension: record.metadata.extension,
-                    relativePath: record.metadata.relativePath,
-                    startLine: record.metadata.startLine,
-                    endLine: record.metadata.endLine,
-                    chunkIndex: record.metadata.chunkIndex,
-                    isCode: record.metadata.isCode,
-                    context: record.metadata.context || '',
-                },
-            }));
+      const results = await index.query({
+        vector: embedding,
+        topK,
+        filter: queryFilter,
+        includeMetadata: true,
+      });
 
-            // Batch upsert in chunks of 100
-            const batchSize = 100;
-            for (let i = 0; i < vectors.length; i += batchSize) {
-                const batch = vectors.slice(i, i + batchSize);
-                await index.upsert(batch);
-            }
+      return (
+        results.matches?.map((match) => ({
+          id: match.id,
+          score: match.score || 0,
+          content: (match.metadata?.content as string) || "",
+          metadata: {
+            content: (match.metadata?.content as string) || "",
+            language: match.metadata?.language as string,
+            fileType: (match.metadata?.fileType as string) || "",
+            extension: (match.metadata?.extension as string) || "",
+            relativePath: (match.metadata?.relativePath as string) || "",
+            size: 0,
+            isCode: (match.metadata?.isCode as boolean) || false,
+            context: match.metadata?.context as string,
+            startLine: (match.metadata?.startLine as number) || 0,
+            endLine: (match.metadata?.endLine as number) || 0,
+            chunkIndex: (match.metadata?.chunkIndex as number) || 0,
+          },
+        })) || []
+      );
+    } catch (error) {
+      logger.error({ error }, "Failed to search vectors");
+      throw error;
+    }
+  }
 
-            logger.info({ count: records.length }, 'Upserted vectors to Pinecone');
-        } catch (error) {
-            logger.error({ error }, 'Failed to upsert vectors');
-            throw error;
-        }
+  async deleteByRepo(repoId: string): Promise<void> {
+    if (!this.initialized) {
+      await this.initialize();
     }
 
-    async search(
-        embedding: number[],
-        repoId: string,
-        topK: number = 5,
-        filter?: Record<string, any>
-    ): Promise<SearchResult[]> {
-        if (!this.initialized) {
-            await this.initialize();
-        }
+    try {
+      const index = this.client.index(this.indexName);
+      await index.deleteMany({
+        repoId: { $eq: repoId },
+      });
+      logger.info({ repoId }, "Deleted vectors for repo");
+    } catch (error) {
+      logger.error({ error, repoId }, "Failed to delete vectors");
+      throw error;
+    }
+  }
 
-        try {
-            const index = this.client.index(this.indexName);
-
-            const queryFilter: Record<string, any> = {
-                repoId: { $eq: repoId },
-                ...filter,
-            };
-
-            const results = await index.query({
-                vector: embedding,
-                topK,
-                filter: queryFilter,
-                includeMetadata: true,
-            });
-
-            return results.matches?.map(match => ({
-                id: match.id,
-                score: match.score || 0,
-                content: (match.metadata?.content as string) || '',
-                metadata: {
-                    content: (match.metadata?.content as string) || '',
-                    language: match.metadata?.language as string,
-                    fileType: (match.metadata?.fileType as string) || '',
-                    extension: (match.metadata?.extension as string) || '',
-                    relativePath: (match.metadata?.relativePath as string) || '',
-                    size: 0,
-                    isCode: (match.metadata?.isCode as boolean) || false,
-                    context: match.metadata?.context as string,
-                    startLine: (match.metadata?.startLine as number) || 0,
-                    endLine: (match.metadata?.endLine as number) || 0,
-                    chunkIndex: (match.metadata?.chunkIndex as number) || 0,
-                },
-            })) || [];
-        } catch (error) {
-            logger.error({ error }, 'Failed to search vectors');
-            throw error;
-        }
+  async deleteByFile(repoId: string, filePath: string): Promise<void> {
+    if (!this.initialized) {
+      await this.initialize();
     }
 
-    async deleteByRepo(repoId: string): Promise<void> {
-        if (!this.initialized) {
-            await this.initialize();
-        }
+    try {
+      const index = this.client.index(this.indexName);
+      await index.deleteMany({
+        repoId: { $eq: repoId },
+        filePath: { $eq: filePath },
+      });
+      logger.info({ repoId, filePath }, "Deleted vectors for file");
+    } catch (error) {
+      logger.error({ error, repoId, filePath }, "Failed to delete vectors");
+      throw error;
+    }
+  }
 
-        try {
-            const index = this.client.index(this.indexName);
-            await index.deleteMany({
-                repoId: { $eq: repoId },
-            });
-            logger.info({ repoId }, 'Deleted vectors for repo');
-        } catch (error) {
-            logger.error({ error, repoId }, 'Failed to delete vectors');
-            throw error;
-        }
+  async getStats(): Promise<any> {
+    if (!this.initialized) {
+      await this.initialize();
     }
 
-    async deleteByFile(repoId: string, filePath: string): Promise<void> {
-        if (!this.initialized) {
-            await this.initialize();
-        }
-
-        try {
-            const index = this.client.index(this.indexName);
-            await index.deleteMany({
-                repoId: { $eq: repoId },
-                filePath: { $eq: filePath },
-            });
-            logger.info({ repoId, filePath }, 'Deleted vectors for file');
-        } catch (error) {
-            logger.error({ error, repoId, filePath }, 'Failed to delete vectors');
-            throw error;
-        }
+    try {
+      const index = this.client.index(this.indexName);
+      return await index.describeIndexStats();
+    } catch (error) {
+      logger.error({ error }, "Failed to get index stats");
+      throw error;
     }
+  }
 
-    async getStats(): Promise<any> {
-        if (!this.initialized) {
-            await this.initialize();
-        }
-
-        try {
-            const index = this.client.index(this.indexName);
-            return await index.describeIndexStats();
-        } catch (error) {
-            logger.error({ error }, 'Failed to get index stats');
-            throw error;
-        }
-    }
-
-    isHealthy(): boolean {
-        return this.initialized;
-    }
+  isHealthy(): boolean {
+    return this.initialized;
+  }
 }
 
 export const vectorStoreService = new VectorStoreService();
