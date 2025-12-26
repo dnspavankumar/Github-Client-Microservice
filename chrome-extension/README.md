@@ -6,6 +6,7 @@ An AI-powered Chrome extension that provides intelligent summaries and Q&A capab
 
 - 🤖 **AI-Powered Summaries**: Automatically analyze and summarize any GitHub repository
 - 💬 **Intelligent Q&A**: Ask questions about the codebase and get context-aware answers
+- 📁 **VS Code-Style Sidebar**: Browse repository files with a collapsible tree view directly on GitHub pages
 - 🔍 **Scoped Search**: Query specific folders or the entire repository
 - 📚 **Query History**: Keep track of your previous questions and answers
 - 🎯 **Source Attribution**: See exactly which files contributed to each answer
@@ -95,6 +96,26 @@ Before using this extension, you need to have the GitHub RAG microservice backen
 
 ## Usage
 
+### File Explorer Sidebar
+
+When you visit any GitHub repository, a VS Code-style sidebar automatically appears on the left side of the page:
+
+1. **Browse Files**: The sidebar shows the complete repository file tree
+   - Click folders to expand/collapse them
+   - Click files to navigate to them on GitHub
+   - Folder and file icons for easy identification
+
+2. **Search Files**: Use the search box at the top to filter files by name or path
+   - Real-time filtering as you type
+   - Matches anywhere in the file path
+
+3. **Toggle Sidebar**: 
+   - Click the collapse button (◀) in the sidebar header to hide it
+   - Click the toggle button on the left edge to show it again
+   - Your preference is saved automatically
+
+4. **Refresh**: Click the refresh button (🔄) to reload the file tree
+
 ### Analyzing a Repository
 
 1. Navigate to any GitHub repository in Chrome (e.g., https://github.com/microsoft/vscode)
@@ -142,6 +163,9 @@ chrome-extension/
 ├── popup.html            # Main popup interface
 ├── popup.css             # Popup styling
 ├── popup.js              # Popup logic and API calls
+├── sidebar.html          # Sidebar HTML template
+├── sidebar.css           # Sidebar styling
+├── sidebar.js            # Sidebar logic and file tree
 ├── background.js         # Background service worker
 ├── content.js            # Content script for GitHub pages
 ├── options.html          # Settings page

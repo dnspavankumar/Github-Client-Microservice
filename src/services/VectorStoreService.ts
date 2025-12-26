@@ -100,18 +100,82 @@ class VectorStoreService {
         },
       }));
 
-      // Batch upsert in chunks of 100
+      logger.info({ totalVectors: vectors.length }, "Starting Pinecone upsert");
+
+      // Batch upsert in chunks of 100 with retry logic
       const batchSize = 100;
+      let successCount = 0;
+
       for (let i = 0; i < vectors.length; i += batchSize) {
         const batch = vectors.slice(i, i + batchSize);
-        await index.upsert(batch);
+        const batchNum = Math.floor(i / batchSize) + 1;
+        const totalBatches = Math.ceil(vectors.length / batchSize);
+
+        await this.upsertBatchWithRetry(index, batch, batchNum, totalBatches);
+        successCount += batch.length;
+
+        logger.info(
+          {
+            progress: `${successCount}/${vectors.length}`,
+            percentage: Math.round((successCount / vectors.length) * 100),
+          },
+          "Upsert progress",
+        );
       }
 
       logger.info({ count: records.length }, "Upserted vectors to Pinecone");
     } catch (error) {
-      logger.error({ error }, "Failed to upsert vectors");
+      logger.error(
+        { error, errorName: error.name, errorMessage: error.message },
+        "Failed to upsert vectors",
+      );
       throw error;
     }
+  }
+
+  private async upsertBatchWithRetry(
+    index: any,
+    batch: any[],
+    batchNum: number,
+    totalBatches: number,
+    maxRetries: number = 3,
+  ): Promise<void> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        await index.upsert(batch);
+        return; // Success
+      } catch (error: any) {
+        lastError = error;
+        const isLastAttempt = attempt === maxRetries - 1;
+
+        logger.warn(
+          {
+            error: error.message,
+            errorName: error.name,
+            batchNum,
+            totalBatches,
+            attempt: attempt + 1,
+            maxRetries,
+            willRetry: !isLastAttempt,
+          },
+          "Pinecone upsert batch failed",
+        );
+
+        if (!isLastAttempt) {
+          // Exponential backoff: 2s, 4s, 8s
+          const delay = 2000 * Math.pow(2, attempt);
+          logger.info({ delayMs: delay }, "Waiting before retry");
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    // All retries failed
+    throw new Error(
+      `Failed to upsert batch ${batchNum}/${totalBatches} after ${maxRetries} attempts: ${lastError?.message || "Unknown error"}`,
+    );
   }
 
   async search(

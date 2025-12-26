@@ -185,6 +185,37 @@
                 </div>
             </div>
 
+            <!-- Explorer Tab -->
+            <div id="explorerTab" class="tab-content hidden">
+                <div class="explorer-header">
+                    <div class="explorer-title">
+                        <svg viewBox="0 0 16 16" width="16" height="16">
+                            <path fill="currentColor" d="M1.75 1A1.75 1.75 0 000 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0016 13.25v-8.5A1.75 1.75 0 0014.25 3H7.5a.25.25 0 01-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75z"></path>
+                        </svg>
+                        <span>Repository Files</span>
+                    </div>
+                    <button id="refreshTree" class="icon-btn-small" title="Refresh">
+                        🔄
+                    </button>
+                </div>
+                
+                <div class="explorer-search">
+                    <input type="text" id="fileSearch" placeholder="Search files..." />
+                </div>
+
+                <div id="explorerLoading" class="explorer-loading hidden">
+                    <span class="spinner"></span>
+                    <span>Loading file tree...</span>
+                </div>
+
+                <div id="fileTree" class="file-tree"></div>
+
+                <div id="explorerEmpty" class="explorer-empty hidden">
+                    <p>📂 No files found</p>
+                    <p class="text-small">Click "Refresh" to load the file tree</p>
+                </div>
+            </div>
+
             <!-- Error Message -->
             <div id="errorMessage" class="error-message hidden">
                 <span class="error-icon">⚠️</span>

@@ -22,6 +22,7 @@ const elements = {
   tabNav: document.getElementById("tabNav"),
   summaryTab: document.getElementById("summaryTab"),
   queryTab: document.getElementById("queryTab"),
+  explorerTab: document.getElementById("explorerTab"),
   analyzBtn: document.getElementById("analyzBtn"),
   summaryResult: document.getElementById("summaryResult"),
   summaryContent: document.getElementById("summaryContent"),
@@ -46,6 +47,11 @@ const elements = {
   settingsBtn: document.getElementById("settingsBtn"),
   copySummary: document.getElementById("copySummary"),
   copyAnswer: document.getElementById("copyAnswer"),
+  fileTree: document.getElementById("fileTree"),
+  fileSearch: document.getElementById("fileSearch"),
+  refreshTree: document.getElementById("refreshTree"),
+  explorerLoading: document.getElementById("explorerLoading"),
+  explorerEmpty: document.getElementById("explorerEmpty"),
 };
 
 // Initialize
@@ -249,6 +255,13 @@ function setupEventListeners() {
       askQuestion();
     }
   });
+
+  // Explorer tab
+  elements.refreshTree.addEventListener("click", loadFileTree);
+  
+  elements.fileSearch.addEventListener("input", (e) => {
+    filterFileTree(e.target.value);
+  });
 }
 
 // Switch tabs
@@ -259,6 +272,14 @@ function switchTab(tabName) {
 
   elements.summaryTab.classList.toggle("hidden", tabName !== "summary");
   elements.queryTab.classList.toggle("hidden", tabName !== "query");
+  elements.explorerTab.classList.toggle("hidden", tabName !== "explorer");
+
+  // Load file tree when explorer tab is opened
+  if (tabName === "explorer" && currentRepo) {
+    if (elements.fileTree.children.length === 0) {
+      loadFileTree();
+    }
+  }
 }
 
 // Analyze repository
@@ -700,4 +721,300 @@ function formatTime(timestamp) {
   if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
   if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
   return date.toLocaleDateString();
+}
+
+// ============================================
+// FILE EXPLORER FUNCTIONALITY
+// ============================================
+
+let fileTreeData = null;
+let expandedFolders = new Set();
+
+// Load file tree from GitHub API
+async function loadFileTree() {
+  if (!currentRepo) return;
+
+  elements.explorerLoading.classList.remove("hidden");
+  elements.explorerEmpty.classList.add("hidden");
+  elements.fileTree.innerHTML = "";
+
+  try {
+    const [owner, repo] = currentRepo.split("/");
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${currentBranch}?recursive=1`;
+
+    const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      throw new Error(`GitHub API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.tree || data.tree.length === 0) {
+      elements.explorerEmpty.classList.remove("hidden");
+      elements.explorerLoading.classList.add("hidden");
+      return;
+    }
+
+    // Build tree structure
+    fileTreeData = buildTreeStructure(data.tree);
+
+    // Render tree
+    renderFileTree(fileTreeData);
+
+    elements.explorerLoading.classList.add("hidden");
+  } catch (error) {
+    console.error("Error loading file tree:", error);
+    showError(`Failed to load file tree: ${error.message}`);
+    elements.explorerEmpty.classList.remove("hidden");
+    elements.explorerLoading.classList.add("hidden");
+  }
+}
+
+// Build hierarchical tree structure from flat GitHub tree
+function buildTreeStructure(flatTree) {
+  const root = { name: "", type: "tree", children: {} };
+
+  flatTree.forEach((item) => {
+    const parts = item.path.split("/");
+    let current = root;
+
+    parts.forEach((part, index) => {
+      if (!current.children[part]) {
+        current.children[part] = {
+          name: part,
+          type: index === parts.length - 1 ? item.type : "tree",
+          path: parts.slice(0, index + 1).join("/"),
+          children: {},
+        };
+      }
+      current = current.children[part];
+    });
+  });
+
+  return root;
+}
+
+// Render file tree
+function renderFileTree(node = fileTreeData, container = elements.fileTree, level = 0) {
+  if (!node || !node.children) return;
+
+  const entries = Object.values(node.children).sort((a, b) => {
+    // Folders first, then files
+    if (a.type === "tree" && b.type !== "tree") return -1;
+    if (a.type !== "tree" && b.type === "tree") return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  entries.forEach((item) => {
+    const itemElement = createTreeItem(item, level);
+    container.appendChild(itemElement);
+
+    if (item.type === "tree" && Object.keys(item.children).length > 0) {
+      const childrenContainer = document.createElement("div");
+      childrenContainer.className = "tree-children";
+      childrenContainer.dataset.path = item.path;
+
+      if (expandedFolders.has(item.path)) {
+        childrenContainer.classList.add("expanded");
+        renderFileTree(item, childrenContainer, level + 1);
+      }
+
+      container.appendChild(childrenContainer);
+    }
+  });
+}
+
+// Create tree item element
+function createTreeItem(item, level) {
+  const itemDiv = document.createElement("div");
+  itemDiv.className = `tree-item ${item.type === "tree" ? "folder" : "file"}`;
+  itemDiv.dataset.path = item.path;
+  itemDiv.dataset.type = item.type;
+
+  const contentDiv = document.createElement("div");
+  contentDiv.className = "tree-item-content";
+
+  // Indentation
+  for (let i = 0; i < level; i++) {
+    const indent = document.createElement("span");
+    indent.className = "tree-indent";
+    contentDiv.appendChild(indent);
+  }
+
+  // Chevron for folders
+  if (item.type === "tree") {
+    const chevron = document.createElement("span");
+    chevron.className = "tree-chevron";
+    chevron.textContent = "▶";
+    if (expandedFolders.has(item.path)) {
+      chevron.classList.add("expanded");
+    }
+    contentDiv.appendChild(chevron);
+  } else {
+    const spacer = document.createElement("span");
+    spacer.className = "tree-indent";
+    contentDiv.appendChild(spacer);
+  }
+
+  // Icon
+  const icon = document.createElement("span");
+  icon.className = "tree-icon";
+  if (item.type === "tree") {
+    icon.textContent = expandedFolders.has(item.path) ? "📂" : "📁";
+  } else {
+    icon.className += ` ${getFileIconClass(item.name)}`;
+  }
+  contentDiv.appendChild(icon);
+
+  // Label
+  const label = document.createElement("span");
+  label.className = "tree-label";
+  label.textContent = item.name;
+  label.title = item.path;
+  contentDiv.appendChild(label);
+
+  itemDiv.appendChild(contentDiv);
+
+  // Click handler
+  itemDiv.addEventListener("click", (e) => {
+    e.stopPropagation();
+    handleTreeItemClick(item, itemDiv);
+  });
+
+  return itemDiv;
+}
+
+// Handle tree item click
+function handleTreeItemClick(item, element) {
+  if (item.type === "tree") {
+    // Toggle folder
+    toggleFolder(item.path);
+  } else {
+    // Select file and open in GitHub
+    selectTreeItem(element);
+    openFileInGitHub(item.path);
+  }
+}
+
+// Toggle folder expansion
+function toggleFolder(path) {
+  if (expandedFolders.has(path)) {
+    expandedFolders.delete(path);
+  } else {
+    expandedFolders.add(path);
+  }
+
+  // Re-render tree
+  elements.fileTree.innerHTML = "";
+  renderFileTree();
+}
+
+// Select tree item
+function selectTreeItem(element) {
+  document.querySelectorAll(".tree-item.selected").forEach((item) => {
+    item.classList.remove("selected");
+  });
+  element.classList.add("selected");
+}
+
+// Open file in GitHub
+async function openFileInGitHub(filePath) {
+  const url = `https://github.com/${currentRepo}/blob/${currentBranch}/${filePath}`;
+
+  try {
+    const [tab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+
+    if (tab) {
+      await chrome.tabs.update(tab.id, { url });
+    }
+  } catch (error) {
+    console.error("Error opening file:", error);
+    showError("Failed to open file");
+  }
+}
+
+// Get file icon class based on extension
+function getFileIconClass(filename) {
+  const ext = filename.split(".").pop().toLowerCase();
+
+  const iconMap = {
+    js: "file-icon-js",
+    ts: "file-icon-ts",
+    jsx: "file-icon-jsx",
+    tsx: "file-icon-tsx",
+    json: "file-icon-json",
+    md: "file-icon-md",
+    css: "file-icon-css",
+    scss: "file-icon-scss",
+    sass: "file-icon-scss",
+    html: "file-icon-html",
+    py: "file-icon-py",
+    java: "file-icon-java",
+    go: "file-icon-go",
+    rs: "file-icon-rs",
+    cpp: "file-icon-cpp",
+    c: "file-icon-c",
+    sh: "file-icon-sh",
+    bash: "file-icon-sh",
+    yml: "file-icon-yml",
+    yaml: "file-icon-yaml",
+    xml: "file-icon-xml",
+    svg: "file-icon-svg",
+    png: "file-icon-png",
+    jpg: "file-icon-jpg",
+    jpeg: "file-icon-jpg",
+    gif: "file-icon-gif",
+  };
+
+  return iconMap[ext] || "file-icon-default";
+}
+
+// Filter file tree based on search
+function filterFileTree(searchTerm) {
+  if (!fileTreeData) return;
+
+  const term = searchTerm.toLowerCase().trim();
+
+  if (!term) {
+    // Show all items
+    document.querySelectorAll(".tree-item").forEach((item) => {
+      item.style.display = "";
+    });
+    document.querySelectorAll(".tree-children").forEach((container) => {
+      container.style.display = "";
+    });
+    return;
+  }
+
+  // Filter items
+  document.querySelectorAll(".tree-item").forEach((item) => {
+    const path = item.dataset.path.toLowerCase();
+    const matches = path.includes(term);
+
+    if (matches) {
+      item.style.display = "";
+      // Show parent folders
+      let parent = item.previousElementSibling;
+      while (parent && parent.classList.contains("tree-item")) {
+        if (parent.dataset.type === "tree") {
+          parent.style.display = "";
+        }
+        parent = parent.previousElementSibling;
+      }
+    } else {
+      item.style.display = "none";
+    }
+  });
+
+  // Show/hide children containers
+  document.querySelectorAll(".tree-children").forEach((container) => {
+    const hasVisibleChildren = Array.from(container.children).some(
+      (child) => child.style.display !== "none"
+    );
+    container.style.display = hasVisibleChildren ? "" : "none";
+  });
 }

@@ -544,6 +544,200 @@ body {
     box-shadow: 0 0 0 2px rgba(209, 36, 47, 0.2);
 }
 
+/* Explorer Tab */
+.explorer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+}
+
+.explorer-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.explorer-title svg {
+    color: var(--text-secondary);
+}
+
+.icon-btn-small {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.icon-btn-small:hover {
+    background: var(--border);
+}
+
+.explorer-search {
+    margin-bottom: 12px;
+}
+
+.explorer-search input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: inherit;
+}
+
+.explorer-search input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(45, 164, 78, 0.1);
+}
+
+.explorer-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.explorer-empty {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.explorer-empty p {
+    margin-bottom: 8px;
+}
+
+.text-small {
+    font-size: 12px;
+    color: var(--text-tertiary);
+}
+
+/* File Tree */
+.file-tree {
+    font-size: 13px;
+    user-select: none;
+}
+
+.tree-item {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s;
+    position: relative;
+}
+
+.tree-item:hover {
+    background: var(--surface);
+}
+
+.tree-item.selected {
+    background: rgba(45, 164, 78, 0.1);
+    color: var(--primary-color);
+}
+
+.tree-item-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.tree-indent {
+    display: inline-block;
+    width: 16px;
+    flex-shrink: 0;
+}
+
+.tree-icon {
+    flex-shrink: 0;
+    font-size: 14px;
+    width: 16px;
+    text-align: center;
+}
+
+.tree-chevron {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    transition: transform 0.2s;
+}
+
+.tree-chevron.expanded {
+    transform: rotate(90deg);
+}
+
+.tree-label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-primary);
+}
+
+.tree-item.file .tree-label {
+    color: var(--text-secondary);
+}
+
+.tree-children {
+    display: none;
+}
+
+.tree-children.expanded {
+    display: block;
+}
+
+.tree-item.folder.loading .tree-chevron::after {
+    content: '⏳';
+}
+
+/* File type icons */
+.file-icon-js::before { content: '📜'; }
+.file-icon-ts::before { content: '📘'; }
+.file-icon-jsx::before { content: '⚛️'; }
+.file-icon-tsx::before { content: '⚛️'; }
+.file-icon-json::before { content: '📋'; }
+.file-icon-md::before { content: '📝'; }
+.file-icon-css::before { content: '🎨'; }
+.file-icon-scss::before { content: '🎨'; }
+.file-icon-html::before { content: '🌐'; }
+.file-icon-py::before { content: '🐍'; }
+.file-icon-java::before { content: '☕'; }
+.file-icon-go::before { content: '🔷'; }
+.file-icon-rs::before { content: '🦀'; }
+.file-icon-cpp::before { content: '⚙️'; }
+.file-icon-c::before { content: '⚙️'; }
+.file-icon-sh::before { content: '🔧'; }
+.file-icon-yml::before { content: '⚙️'; }
+.file-icon-yaml::before { content: '⚙️'; }
+.file-icon-xml::before { content: '📄'; }
+.file-icon-svg::before { content: '🖼️'; }
+.file-icon-png::before { content: '🖼️'; }
+.file-icon-jpg::before { content: '🖼️'; }
+.file-icon-gif::before { content: '🖼️'; }
+.file-icon-default::before { content: '📄'; }
+
 /* Utility Classes */
 .hidden {
     display: none !important;

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repository Explorer</title>
+</head>
+<body>
+    <div id="gh-sidebar-container">
+        <div class="sidebar-header">
+            <div class="sidebar-title">
+                <svg viewBox="0 0 16 16" width="16" height="16">
+                    <path fill="currentColor" d="M1.75 1A1.75 1.75 0 000 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0016 13.25v-8.5A1.75 1.75 0 0014.25 3H7.5a.25.25 0 01-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75z"></path>
+                </svg>
+                <span>Repository Files</span>
+            </div>
+            <div class="sidebar-actions">
+                <button id="refreshTreeBtn" class="icon-btn" title="Refresh">
+                    <svg viewBox="0 0 16 16" width="14" height="14">
+                        <path fill="currentColor" d="M1.705 8.005a.75.75 0 0 1 .834.656 5.5 5.5 0 0 0 9.592 2.97l-1.204-1.204a.25.25 0 0 1 .177-.427h3.646a.25.25 0 0 1 .25.25v3.646a.25.25 0 0 1-.427.177l-1.38-1.38A7.002 7.002 0 0 1 1.05 8.84a.75.75 0 0 1 .656-.834ZM8 2.5a5.487 5.487 0 0 0-4.131 1.869l1.204 1.204A.25.25 0 0 1 4.896 6H1.25A.25.25 0 0 1 1 5.75V2.104a.25.25 0 0 1 .427-.177l1.38 1.38A7.002 7.002 0 0 1 14.95 7.16a.75.75 0 0 1-1.49.178A5.5 5.5 0 0 0 8 2.5Z"></path>
+                    </svg>
+                </button>
+                <button id="collapseSidebarBtn" class="icon-btn" title="Collapse">
+                    <svg viewBox="0 0 16 16" width="14" height="14">
+                        <path fill="currentColor" d="M6.823 7.823a.25.25 0 0 1 0 .354l-2.396 2.396A.25.25 0 0 1 4 10.396V5.604a.25.25 0 0 1 .427-.177Z"></path>
+                        <path fill="currentColor" d="M1.75 0h12.5C15.216 0 16 .784 16 1.75v12.5A1.75 1.75 0 0 1 14.25 16H1.75A1.75 1.75 0 0 1 0 14.25V1.75C0 .784.784 0 1.75 0ZM1.5 1.75v12.5c0 .138.112.25.25.25H9.5v-13H1.75a.25.25 0 0 0-.25.25ZM11 14.5h3.25a.25.25 0 0 0 .25-.25V1.75a.25.25 0 0 0-.25-.25H11Z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div class="sidebar-search">
+            <input type="text" id="sidebarFileSearch" placeholder="Search files..." />
+        </div>
+
+        <div id="sidebarLoading" class="sidebar-loading hidden">
+            <div class="spinner"></div>
+            <span>Loading file tree...</span>
+        </div>
+
+        <div id="sidebarFileTree" class="sidebar-file-tree"></div>
+
+        <div id="sidebarEmpty" class="sidebar-empty hidden">
+            <p>📂 No files found</p>
+            <p class="text-small">Click refresh to load the file tree</p>
+        </div>
+    </div>
+
+    <div id="gh-sidebar-toggle" class="sidebar-toggle collapsed">
+        <svg viewBox="0 0 16 16" width="16" height="16">
+            <path fill="currentColor" d="M1.75 1A1.75 1.75 0 000 2.75v10.5C0 14.216.784 15 1.75 15h12.5A1.75 1.75 0 0016 13.25v-8.5A1.75 1.75 0 0014.25 3H7.5a.25.25 0 01-.2-.1l-.9-1.2C6.07 1.26 5.55 1 5 1H1.75z"></path>
+        </svg>
+    </div>
+</body>
+</html>
