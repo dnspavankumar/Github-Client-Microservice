@@ -1,6 +1,6 @@
 // Options page script for GitHub Repo Assistant
 
-const DEFAULT_API_URL = 'http://localhost:3000/api/v1';
+const DEFAULT_API_URL = 'https://github-client-microservice-evqm.onrender.com/api/v1';
 
 // DOM Elements
 const elements = {

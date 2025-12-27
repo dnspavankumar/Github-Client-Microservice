@@ -1,5 +1,5 @@
 // Configuration
-const API_BASE_URL = "http://localhost:3000/api/v1";
+const API_BASE_URL = "https://github-client-microservice-evqm.onrender.com/api/v1";
 const STORAGE_KEYS = {
   API_URL: "apiUrl",
   INGESTED_REPOS: "ingestedRepos",

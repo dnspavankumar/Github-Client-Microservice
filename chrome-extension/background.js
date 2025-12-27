@@ -1,6 +1,6 @@
 // Background service worker for GitHub Repo Assistant
 
-const API_BASE_URL = "http://localhost:3000/api/v1";
+const API_BASE_URL = "https://github-client-microservice-evqm.onrender.com/api/v1";
 
 // Handle extension installation
 chrome.runtime.onInstalled.addListener((details) => {

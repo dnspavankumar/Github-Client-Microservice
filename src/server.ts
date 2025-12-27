@@ -22,7 +22,21 @@ app.use(
 // CORS configuration for Chrome extension
 app.use(
   cors({
-    origin: ["http://localhost:3000", "chrome-extension://*"],
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+      
+      // Allow localhost and chrome extensions
+      if (
+        origin.startsWith("http://localhost") ||
+        origin.startsWith("chrome-extension://") ||
+        origin.startsWith("https://")
+      ) {
+        return callback(null, true);
+      }
+      
+      callback(null, true); // Allow all origins for now
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
