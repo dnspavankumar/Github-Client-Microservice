@@ -29,8 +29,8 @@ export class GitService {
     try {
       const url = new URL(repoUrl);
       if (url.hostname === "github.com") {
-        url.username = this.githubToken;
-        return url.toString();
+        // Use token:x-oauth-basic@ format for better compatibility
+        return repoUrl.replace('https://', `https://${this.githubToken}:x-oauth-basic@`);
       }
     } catch (error) {
       logger.warn({ repoUrl }, "Failed to parse repo URL for authentication");
@@ -62,26 +62,97 @@ export class GitService {
         return repoPath;
       }
 
-      // Clone the repository
-      const authenticatedUrl = this.getAuthenticatedUrl(repoUrl);
-      const isPrivate = this.githubToken ? "public/private" : "public";
+      // Try cloning without auth first (for public repos)
       logger.info(
-        { repoUrl, branch, repoPath, repoType: isPrivate },
-        "Cloning repository",
+        { repoUrl, branch, repoPath },
+        "Cloning repository (public)",
       );
+      
       const git: SimpleGit = simpleGit();
+      let cloneSuccessful = false;
 
-      await git.clone(authenticatedUrl, repoPath, {
-        "--depth": 1,
-        "--single-branch": null,
-        "--branch": branch,
-      });
+      try {
+        // First attempt: Clone without authentication (public repos)
+        await git.clone(repoUrl, repoPath, {
+          "--depth": 1,
+          "--single-branch": null,
+          "--branch": branch,
+        });
+        cloneSuccessful = true;
+        logger.info({ repoId }, "Cloned public repository successfully");
+      } catch (publicError: any) {
+        logger.warn(
+          { error: publicError.message, repoUrl },
+          "Public clone failed, trying with authentication",
+        );
+
+        // Second attempt: Try with authentication (private repos)
+        if (this.githubToken) {
+          try {
+            const authenticatedUrl = this.getAuthenticatedUrl(repoUrl);
+            await git.clone(authenticatedUrl, repoPath, {
+              "--depth": 1,
+              "--single-branch": null,
+              "--branch": branch,
+            });
+            cloneSuccessful = true;
+            logger.info({ repoId }, "Cloned private repository successfully");
+          } catch (privateError: any) {
+            // Third attempt: Try master branch if main failed
+            if (branch === "main") {
+              logger.warn(
+                { repoUrl },
+                "Branch 'main' not found, trying 'master'",
+              );
+              const authenticatedUrl = this.getAuthenticatedUrl(repoUrl);
+              await git.clone(authenticatedUrl, repoPath, {
+                "--depth": 1,
+                "--single-branch": null,
+                "--branch": "master",
+              });
+              cloneSuccessful = true;
+              logger.info({ repoId }, "Cloned with 'master' branch");
+            } else {
+              throw privateError;
+            }
+          }
+        } else {
+          // No token available, try master branch
+          if (branch === "main") {
+            logger.warn(
+              { repoUrl },
+              "Branch 'main' not found, trying 'master'",
+            );
+            await git.clone(repoUrl, repoPath, {
+              "--depth": 1,
+              "--single-branch": null,
+              "--branch": "master",
+            });
+            cloneSuccessful = true;
+            logger.info({ repoId }, "Cloned with 'master' branch");
+          } else {
+            throw publicError;
+          }
+        }
+      }
+
+      if (!cloneSuccessful) {
+        throw new Error("Failed to clone repository after all attempts");
+      }
 
       logger.info({ repoId, repoPath }, "Repository cloned successfully");
       return repoPath;
-    } catch (error) {
-      logger.error({ error, repoUrl, branch }, "Failed to clone repository");
-      throw error;
+    } catch (error: any) {
+      logger.error(
+        {
+          error: error.message,
+          stack: error.stack,
+          repoUrl,
+          branch,
+        },
+        "Failed to clone repository",
+      );
+      throw new Error(`Failed to clone repository: ${error.message}`);
     }
   }
 
