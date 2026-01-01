@@ -6,7 +6,7 @@ async function testSummaryQuery() {
   const query = {
     repoId: "dnspavankumar/DeepBusinessResearchAssistant",
     query: "README documentation overview main features installation setup usage",
-    topK: 10,
+    topK: 5,
     minScore: 0.15
   };
   

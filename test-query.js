@@ -6,7 +6,7 @@ async function testQuery() {
   const query = {
     repoId: "dnspavankumar/DeepBusinessResearchAssistant",
     query: "does this have a dark theme",
-    topK: 10,
+    topK: 5,
     minScore: 0.3  // Lower threshold to see all results
   };
   

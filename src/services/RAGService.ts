@@ -172,11 +172,13 @@ export class RAGService {
     query: string,
     results: SearchResult[],
   ): Promise<string> {
-    // Build context from search results
+    // Build context from search results - limit to avoid token overflow
     const context = results
+      .slice(0, 5)  // Only use top 5 results to stay under 6000 token limit
       .map((result, index) => {
         const fileInfo = `File: ${result.metadata.relativePath} (lines ${result.metadata.startLine}-${result.metadata.endLine})`;
-        const code = result.content;
+        // Truncate code to 400 chars per chunk to fit Groq's 6000 token limit
+        const code = result.content.substring(0, 400);
         return `[${index + 1}] ${fileInfo}\n\`\`\`${result.metadata.language || ""}\n${code}\n\`\`\``;
       })
       .join("\n\n");

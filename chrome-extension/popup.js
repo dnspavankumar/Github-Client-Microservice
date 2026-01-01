@@ -509,7 +509,7 @@ async function generateSummary(ingestionData) {
         repoId: currentRepo,
         query:
           "What is this repository about? Describe the main purpose, key features, architecture, and how to use it. Include information from README, documentation, and main code files.",
-        topK: 10,  // Increased from 15
+        topK: 5,  // Increased from 15
         minScore: 0.15,  // Lowered from 0.3 for local embeddings
       }),
     });
