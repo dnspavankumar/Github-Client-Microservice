@@ -210,12 +210,55 @@ class VectorStoreService {
         ...filter,
       };
 
+      logger.info(
+        {
+          repoId,
+          topK,
+          filter: queryFilter,
+          embeddingDim: embedding.length,
+        },
+        "Searching Pinecone with filter",
+      );
+
       const results = await index.query({
         vector: embedding,
         topK,
         filter: queryFilter,
         includeMetadata: true,
       });
+
+      logger.info(
+        {
+          repoId,
+          matchesFound: results.matches?.length || 0,
+          topScores: results.matches?.slice(0, 3).map((m) => m.score) || [],
+        },
+        "Pinecone search completed",
+      );
+
+      // If no results with filter, try without filter to debug
+      if (!results.matches || results.matches.length === 0) {
+        logger.warn(
+          { repoId, filter: queryFilter },
+          "No results with filter, trying without filter to debug",
+        );
+
+        const debugResults = await index.query({
+          vector: embedding,
+          topK: 3,
+          includeMetadata: true,
+        });
+
+        logger.info(
+          {
+            totalVectorsFound: debugResults.matches?.length || 0,
+            sampleRepoIds: debugResults.matches
+              ?.slice(0, 3)
+              .map((m) => m.metadata?.repoId) || [],
+          },
+          "Debug: Vectors in index (without filter)",
+        );
+      }
 
       return (
         results.matches?.map((match) => ({
