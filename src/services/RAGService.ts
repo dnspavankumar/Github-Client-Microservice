@@ -26,6 +26,16 @@ export class RAGService {
     const startTime = Date.now();
 
     try {
+      logger.info(
+        {
+          repoId: request.repoId,
+          query: request.query,
+          requestedMinScore: request.minScore,
+          requestedTopK: request.topK,
+        },
+        "Query request received",
+      );
+
       // Generate embedding for the query
       const queryEmbedding = await embeddingService.generateEmbedding(
         request.query,

@@ -138,9 +138,9 @@ class VectorStoreService {
       }
 
       logger.info({ count: records.length }, "Upserted vectors to Pinecone");
-    } catch (error) {
+    } catch (error: any) {
       logger.error(
-        { error, errorName: error.name, errorMessage: error.message },
+        { error, errorName: error?.name, errorMessage: error?.message },
         "Failed to upsert vectors",
       );
       throw error;

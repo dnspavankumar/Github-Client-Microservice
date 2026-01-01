@@ -15,7 +15,7 @@ router.get('/health', healthCheck);
 router.get('/stats', getStats);
 
 // Debug endpoint to check Pinecone contents
-router.get('/debug/pinecone', asyncHandler(async (req, res) => {
+router.get('/debug/pinecone', asyncHandler(async (_req, res) => {
     const vectorStoreService = require('../services/VectorStoreService').default;
     const stats = await vectorStoreService.getStats();
     res.json({
