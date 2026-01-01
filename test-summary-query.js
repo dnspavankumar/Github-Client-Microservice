@@ -7,7 +7,7 @@ async function testSummaryQuery() {
     repoId: "dnspavankumar/DeepBusinessResearchAssistant",
     query: "README documentation overview main features installation setup usage",
     topK: 15,
-    minScore: 0.25
+    minScore: 0.15
   };
   
   try {

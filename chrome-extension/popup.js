@@ -510,7 +510,7 @@ async function generateSummary(ingestionData) {
         query:
           "What is this repository about? Describe the main purpose, key features, architecture, and how to use it. Include information from README, documentation, and main code files.",
         topK: 20,  // Increased from 15
-        minScore: 0.3,  // Lowered from 0.25 for better results
+        minScore: 0.15,  // Lowered from 0.3 for local embeddings
       }),
     });
 
@@ -572,7 +572,7 @@ async function askQuestion() {
       repoId: currentRepo,
       query,
       topK: 10,
-      minScore: 0.25,
+      minScore: 0.15,
     };
 
     if (scopeType === "folder" && elements.folderPath.value.trim()) {

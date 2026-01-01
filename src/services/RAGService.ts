@@ -62,7 +62,7 @@ export class RAGService {
       );
 
       // Filter by minimum score if specified (lowered for local embeddings)
-      const minScore = request.minScore || 0.3;  // Lowered from 0.5 to 0.3
+      const minScore = request.minScore || 0.15;  // Lowered from 0.3 to 0.15 for local embeddings
       const relevantResults = searchResults.filter(
         (result) => result.score >= minScore,
       );
