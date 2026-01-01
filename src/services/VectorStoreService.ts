@@ -80,25 +80,39 @@ class VectorStoreService {
     try {
       const index = this.client.index(this.indexName);
 
-      // Convert to Pinecone format
-      const vectors = records.map((record) => ({
-        id: record.id,
-        values: record.embedding,
-        metadata: {
-          repoId: record.repoId,
-          filePath: record.filePath,
-          content: record.metadata.content,
-          language: record.metadata.language || "",
-          fileType: record.metadata.fileType,
-          extension: record.metadata.extension,
-          relativePath: record.metadata.relativePath,
-          startLine: record.metadata.startLine,
-          endLine: record.metadata.endLine,
-          chunkIndex: record.metadata.chunkIndex,
-          isCode: record.metadata.isCode,
-          context: record.metadata.context || "",
-        },
-      }));
+      // Convert to Pinecone format with metadata truncation
+      const vectors = records.map((record) => {
+        // Truncate content to avoid Pinecone 40KB metadata limit
+        const maxContentLength = 10000; // ~10KB for content
+        const maxContextLength = 5000;  // ~5KB for context
+        
+        const truncatedContent = record.metadata.content.length > maxContentLength
+          ? record.metadata.content.substring(0, maxContentLength) + '...[truncated]'
+          : record.metadata.content;
+        
+        const truncatedContext = (record.metadata.context || '').length > maxContextLength
+          ? (record.metadata.context || '').substring(0, maxContextLength) + '...[truncated]'
+          : record.metadata.context || '';
+
+        return {
+          id: record.id,
+          values: record.embedding,
+          metadata: {
+            repoId: record.repoId,
+            filePath: record.filePath,
+            content: truncatedContent,
+            language: record.metadata.language || "",
+            fileType: record.metadata.fileType,
+            extension: record.metadata.extension,
+            relativePath: record.metadata.relativePath,
+            startLine: record.metadata.startLine,
+            endLine: record.metadata.endLine,
+            chunkIndex: record.metadata.chunkIndex,
+            isCode: record.metadata.isCode,
+            context: truncatedContext,
+          },
+        };
+      });
 
       logger.info({ totalVectors: vectors.length }, "Starting Pinecone upsert");
 
